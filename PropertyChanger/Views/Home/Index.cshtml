@@ -1,0 +1,21 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to Property changer</h1>
+    <form asp-controller="Home" asp-action="Desiarilizer" method="post" enctype="multipart/form-data" name="changerPostForm">
+        <div class="row">
+            <div class="col-auto">
+                <label for="NETObject">
+                    Поместите сюда файлик с сериализованным объектом
+                </label>
+                <input type="file" accept="text/plain" name="NETObject" required />
+            </div>
+        </div>
+        <div class="row">
+            <input type="button" onclick="ClickSubmitButtonHandler()" value="Отправить" />
+        </div>
+    </form>
+</div>
+<script src="~/js/ChangerObjectClient.js" asp-append-version="true"></script>
