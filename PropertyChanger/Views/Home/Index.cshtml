@@ -3,11 +3,17 @@
 }
 
 <div class="text-center">
-    <h1 class="display-4">Welcome to Property changer</h1>
-    <form name="changerPostForm">
-        <div class="row">
-
+    <h5>Welcome to property changer</h5>
+    <div class="row mt-2 border-bottom">
+        <div class="col-sm-2">
+            <p>Имя свойства</p>
         </div>
+        <div class="col-sm-2">
+            <p>Значение</p>
+        </div>
+    </div>
+    <form name="changerPostForm" id="changerPostForm" style="max-height:750px; overflow-y: scroll;">
+
     </form>
 </div>
 <script src="~/js/ChangerObjectClient.js" asp-append-version="true"></script>
