@@ -1,17 +1,27 @@
-﻿function ClickSubmitButtonHandler() {
-    let data = new FormData();
-    data.append("NETObject", $(document.forms.changerPostForm.elements.NETObject).prop("files")[0]);
-    $.ajax({
-        url: "/Home/Desiarilizer", 
-        type: "POST",
-        data: data,
-        processData: false,
-        contentType: false,
-        success: function (response) {
-            console.log(response);
-        },
-        error: function (response) {
-            console.error("Ошибка при отправке формы на сервер \n" + response);
-        }
+﻿let connection
+function ChangerObjectClient() {
+    connection = new signalR.HubConnectionBuilder()
+        .withUrl("/Editor")
+        .withAutomaticReconnect()
+        .build();
+
+    connection.start({ transport: ['webSockets']}).then(() => {
+        console.log("Соединение установлено " + connection.connectionId);
+    }).catch(err => {
+        console.error("Не получилось установить соединение " + err.toString())
     });
+    
+
+    connection.on("Recieve",(data) => {
+        console.log(data);
+    })
+
+    this.SendObject = function () {
+        connection.invoke("Edit", {}).catch(function (err) {
+            return console.error(err.toString());//если не получилось, пишем в консоль браузера ошибку
+        });
+    }
 }
+document.addEventListener("DOMContentLoaded", () => {
+    let client = new ChangerObjectClient();
+})
