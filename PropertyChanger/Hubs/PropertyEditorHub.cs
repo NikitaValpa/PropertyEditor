@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace PropertyChanger.Hubs
@@ -11,6 +12,7 @@ namespace PropertyChanger.Hubs
     public class PropertyEditorHub:Hub
     {
         private readonly ILogger<PropertyEditorHub> _logger;
+        private Dictionary<string, object> keyValuePairsToClient = new Dictionary<string, object>();
         private readonly List<string> ValidTypes = new List<string>() {
             "SByte",
             "Byte",
@@ -25,7 +27,6 @@ namespace PropertyChanger.Hubs
         public PropertyEditorHub(ILogger<PropertyEditorHub> logger)
         {
             _logger = logger;
-
         }
 
         private PropertyInfo[] Parser(Type type) //метод для парсинга объектов
@@ -47,9 +48,24 @@ namespace PropertyChanger.Hubs
         }
 
         public async Task Edit(object obj) {
-            //var ParsedProperties = Parser(obj.GetType());
+            try
+            {
+                var ParsedProperties = Parser(obj.GetType());
+                foreach (var prop in ParsedProperties) {
+                    keyValuePairsToClient.Add(prop.Name, prop.GetValue(obj));
+                }
+                
+                await Clients?.All.SendAsync("Recieve", keyValuePairsToClient);//так как это веб приложение, то я не придумал ничего лучше, чем просто принудительно отправлять json объект нашему клиенту на js
+            }
+            catch (Exception ex) {
+                _logger.LogError("При попытке парсинга свойств и отправке их клиенту произошла ошибка: " + ex.Message + " stackTrace \n" + ex.StackTrace);
+            }
             
-            await Clients?.All.SendAsync("Recieve", obj);//так как это веб приложение, то я не придумал ничего лучше, чем просто принудительно отправлять json объект нашему клиенту на js
+        }
+        public override async Task OnConnectedAsync()
+        {
+            await Edit(new MyType1());
+            await base.OnConnectedAsync();
         }
 
     }

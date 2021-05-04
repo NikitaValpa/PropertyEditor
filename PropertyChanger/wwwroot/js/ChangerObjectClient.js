@@ -12,8 +12,18 @@ function ChangerObjectClient() {
     });
     
 
-    connection.on("Recieve",(data) => {
-        console.log(data);
+    connection.on("Recieve", (data) => {
+        console.log(data)
+        let formElements="";
+        for (let key in data) {
+            formElements += `<label for=${key} class="col-auto">${key}</label>`;
+            if (typeof(data[key]) == "string") {
+                formElements += `<input type="text" class="col-auto" value="${data[key]}">`;
+            } else {
+                formElements += `<input type="number" class="col-auto" value="${data[key]}">`;
+            }
+        }
+        $(document.forms.changerPostForm).html(formElements);
     })
 
     this.SendObject = function () {
