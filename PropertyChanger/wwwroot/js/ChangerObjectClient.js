@@ -47,10 +47,14 @@
             
                 formElements += `<label class="col-sm-2">${Prop}</label>`;
                 formElements += `<label class="col-sm-2">${data[Prop]["valueType"]}</label>`;
-                if (typeof (data[Prop]["value"]) == "string") {//фильтруем намберы и стринги
-                    formElements += `<input type="text" class="form-control col-sm-2" value="${data[Prop]["value"]}">`;
-                } else {
-                    formElements += `<input type="number" class="form-control col-sm-2" value="${data[Prop]["value"]}">`;
+            if (typeof (data[Prop]["value"]) == "string" || "object") {//фильтруем намберы и стринги
+                formElements += `<p class="col-sm-2">`
+                formElements += `<input type="text" style="float:left;" name="${Prop}" value="${data[Prop]["value"]}">`;
+                formElements += `</p>`
+            } else {
+                formElements += `<p class="col-sm-2">`
+                formElements += `<input type="number" style="float:left;" name="${Prop}" min="${data[Prop]?.["min"]}" max="${data[Prop]?.["max"]}" value="${data[Prop]["value"]}">`;
+                formElements += `</p>`
             }
             
             formElements += `</div>` 
@@ -65,7 +69,7 @@
         } else {
             $(document.forms.changerPostForm).html(formElements);
         }
-        
+        $(document.forms.changerPostForm).validate();
 
         $('input[type="number"]').on('change keyup', function () {//так как дурацкие браузеры позволяют писать буквы в инпутах с типом намбер, вешаем реплейсеры
             // Remove invalid characters
@@ -85,30 +89,26 @@
                 let propType = rows[i].children[1].innerText;
 
                 let value;
-                if (!isNaN(Number(rows[i].children[2].value)) && Number(rows[i].children[2].value!="")) {//фильтруем намберы и стринги, тоесть если не удаётся преобразовать в намбер, то значит это стринг
-                    value = Number(rows[i].children[2].value);
+                if (!isNaN(Number(rows[i].children[2].children[0].value)) && Number(rows[i].children[2].children[0].value!="")) {//фильтруем намберы и стринги, тоесть если не удаётся преобразовать в намбер, то значит это стринг
+                    value = Number(rows[i].children[2].children[0].value);
                 } else {
-                    value = rows[i].children[2].value.toString();
+                    value = rows[i].children[2].children[0].value.toString();
                 }
                 /*Конструируем объект объектов для отсылки на сервер*/
                 propsObjects[`${propName}`] = {};              
                 propsObjects[`${propName}`][`value`] = value;
                 propsObjects[`${propName}`][`valueType`] = propType;
             }
-            console.log("Объект отправляемый серверу ");
-            console.log(propsObjects);
-
-            connection.invoke("Edit", propsObjects).catch(err => {
-                console.error("Не получилось отправить изменённый объект на сервер по причине " + err.toString());
-            })
+            
+            if ($(document.forms.changerPostForm).valid()) {
+                console.log("Объект отправленный серверу ");
+                console.log(propsObjects);
+                connection.invoke("Edit", propsObjects).catch(err => {
+                    console.error("Не получилось отправить изменённый объект на сервер по причине " + err.toString());
+                })
+            }
         })
     })
-
-    this.SendObject = function () {
-        connection.invoke("Edit", {}).catch(function (err) {
-            return console.error(err.toString());//если не получилось, пишем в консоль браузера ошибку
-        });
-    }
 }
 document.addEventListener("DOMContentLoaded", () => {
     let client = new ChangerObjectClient();

@@ -50,6 +50,9 @@ button.accept-policy {
   font-size: 1rem;
   line-height: inherit;
 }
+.error {
+    color:red;
+}
 
 /* Sticky footer styles
 -------------------------------------------------- */

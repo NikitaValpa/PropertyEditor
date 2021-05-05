@@ -13,8 +13,8 @@ namespace PropertyChanger.Hubs
     public class PropertyEditorHub : Hub
     {
         private readonly ILogger<PropertyEditorHub> _logger;
-        private Dictionary<string, Func<JsonElement,object>> Converter = new Dictionary<string, Func<JsonElement,object>>
-        {//очень удобно можно конфигурировать список поддерживаемых типов просто комментируя ненужные
+        private readonly Dictionary<string, Func<JsonElement,object>> Converter = new Dictionary<string, Func<JsonElement,object>>
+        {//можно очень удобно конфигурировать список поддерживаемых типов просто комментируя ненужные
             ["SByte"] = jsonElem => { return jsonElem.GetSByte(); },
             ["Byte"] = jsonElem => { return jsonElem.GetByte(); },
             ["Int16"] = jsonElem => { return jsonElem.GetInt16(); },
@@ -81,7 +81,16 @@ namespace PropertyChanger.Hubs
                 var FilteredProperties = PropertyFilter(_obj?.GetType());
                 Dictionary<string, object> propsToClient = new Dictionary<string, object>();
                 foreach (var prop in FilteredProperties) {
-                    propsToClient.Add(prop.Name, new { value=prop.GetValue(_obj), valueType=prop.PropertyType.Name});
+                    //здесь мы просто к поддерживаемым целочисленным типам добавляем их MaxValue и MinValue для валидирования на клиенте 
+                    if (Converter.Keys.Take(8).FirstOrDefault(str => str == prop.PropertyType.Name) != null)
+                    {
+                        var max = prop.PropertyType.GetField("MaxValue").GetValue(_obj);
+                        var min = prop.PropertyType.GetField("MinValue").GetValue(_obj);
+                        propsToClient.Add(prop.Name, new { value = prop.GetValue(_obj), valueType = prop.PropertyType.Name, max = max, min = min });
+                    }
+                    else {
+                        propsToClient.Add(prop.Name, new { value = prop.GetValue(_obj), valueType = prop.PropertyType.Name });
+                    }
                 }
 
                 await Clients?.All.SendAsync("Recieve", propsToClient);//так как это веб приложение, то я не придумал ничего лучше, чем просто принудительно отправлять json объект нашему клиенту на js при подключении к хабу
@@ -110,9 +119,8 @@ namespace PropertyChanger.Hubs
                     var jsDes = (JsonElement)prop.Value;
                     DesiarilazeDictionary.Add(prop.Key, jsDes.GetProperty("value"));
                 }
-
                 PropertySetter(DesiarilazeDictionary);//собственно говоря меняем состояние объекта!
-                
+
 
                 foreach (var prop in PropertyFilter(_obj?.GetType()))
                 {//это уже по сути для отладки, чтобы увидеть, что изменения произошли
@@ -122,7 +130,7 @@ namespace PropertyChanger.Hubs
                 props.Add("Edited", new { value = true });//если нигде не возникло исключения, значит можно сигнплизировать клиенту, что объект успешно изменён
                 
 
-                await Clients?.All.SendAsync("Recieve", props);//шлём обратно клиенту изменённый объект
+                await Clients?.All.SendAsync("Recieve", props);//шлём обратно клиенту свойства для отрисовки
             }
             catch (Exception ex)
             {
