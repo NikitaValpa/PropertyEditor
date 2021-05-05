@@ -15,7 +15,7 @@ namespace PropertyChanger.Hubs
         private readonly ILogger<PropertyEditorHub> _logger;
         private Dictionary<string, object> propsToClient = new Dictionary<string, object>();
         private Dictionary<string, Func<JsonElement,object>> Converter = new Dictionary<string, Func<JsonElement,object>>
-        {
+        {//очень удобно можно конфигурировать список поддерживаемых типов просто комментируя ненужные
             ["SByte"] = jsonElem => { return jsonElem.GetSByte(); },
             ["Byte"] = jsonElem => { return jsonElem.GetByte(); },
             ["Int16"] = jsonElem => { return jsonElem.GetInt16(); },
@@ -24,19 +24,9 @@ namespace PropertyChanger.Hubs
             ["UInt32"] = jsonElem => { return jsonElem.GetUInt32(); },
             ["Int64"] = jsonElem => { return jsonElem.GetInt64(); },
             ["UInt64"] = jsonElem => { return jsonElem.GetUInt64(); },
+            ["String"] = jsonElem => { return jsonElem.GetString(); },
         };
         private static object _obj;
-        private readonly List<string> ValidTypes = new List<string>() {
-            "SByte",
-            "Byte",
-            "Int16",
-            "UInt16",
-            "Int32",
-            "UInt32",
-            "Int64",
-            "UInt64",
-            "String"
-        };
         public PropertyEditorHub(ILogger<PropertyEditorHub> logger)
         {
             _logger = logger;
@@ -48,7 +38,7 @@ namespace PropertyChanger.Hubs
             foreach (var prop in type.GetProperties()) {
                 if (prop.CanRead && prop.CanWrite)
                 {//если у свойства есть и getter и setter идём дальше
-                    if (ValidTypes.Contains(prop.PropertyType.Name))
+                    if (Converter.Keys.Contains(prop.PropertyType.Name))
                     {//если тип свойства соответсвует любому из допустимых идём дальше
                         if (prop.GetIndexParameters().Length == 0)
                         {//если свойство не индексатор, это то что нам нужно :)
@@ -65,82 +55,93 @@ namespace PropertyChanger.Hubs
          * наше приложение, для этого есть словарь конвертер. В него запиханы функции, которые как раз и приводят наш jsonElement например к int32 или int16 и т.д.
          * А доступ к функциям конвертера мы получаем по ключу, который является названием типа. Сам тип к которому нам нужно привести jsonElement мы получаем
          * путем сопоставления имени свойства которое к нам пришло от клиента и имени свойства в нашем .NET объекте.
+         * Если всё проходит гладко, то после получения уже приведённого значения, мы присваиваем его свойству
          * Конец)
          */
-        private object NumberConverter(Dictionary<string, object> JSprops) {
+        private bool PropertySetter(Dictionary<string, object> JSprops) {
             var NETprops = Parser(_obj?.GetType());
-            foreach (var JSname in JSprops.Keys) {
-                foreach (var NETName in NETprops) {
-                    if (NETName.Name == JSname) {
-                        return Converter[NETName.PropertyType.Name]((JsonElement)JSprops[JSname]);
+            foreach (var JSPropName in JSprops.Keys) {
+                foreach (var NETprop in NETprops) {
+                    if (NETprop.Name == JSPropName) {
+                        var convertedValue = Converter[NETprop.PropertyType.Name]((JsonElement)JSprops[JSPropName]);
+                        NETprop.SetValue(_obj, convertedValue);
                     }
                 }
             }
-            return 0;//безопасим наше присваивание, ведь 0 поддерживают все целочисленные типы данных
+            /*По сути можно было бы сделать метод void, но почему бы нам не возвращать true если все прошло успешно*/
+            return true;//Если не на каком из этапов не выкинуто исключение, значит всё прошло гладко
         }
 
-        public async Task Edit(object obj) {//метод в котором происходит чтение свойст объекта и отправка их клиенту для изменения
+        public async Task InitializeObject(object obj) {//метод в котором происходит чтение свойст объекта и отправка их клиенту для изменения
             try
             {
-                _obj = obj;
+                if (_obj == null) {
+                    _obj = obj;
+                }
+                
                 var ParsedProperties = Parser(_obj?.GetType());
                 foreach (var prop in ParsedProperties) {
-                    propsToClient.Add(prop.Name, prop.GetValue(_obj));
+                    propsToClient.Add(prop.Name, new { value=prop.GetValue(_obj), valueType=prop.PropertyType.Name});
                 }
 
                 await Clients?.All.SendAsync("Recieve", propsToClient);//так как это веб приложение, то я не придумал ничего лучше, чем просто принудительно отправлять json объект нашему клиенту на js при подключении к хабу
             }
             catch (Exception ex) {
-                _logger.LogError("При попытке парсинга свойств и отправке их клиенту произошла ошибка: " + ex.Message + " stackTrace \n" + ex.StackTrace);//для разработчика
+                _logger.LogError("При попытке парсинга свойств и отправке их клиенту произошла ошибка: " + ex.Message + "\n stackTrace: \n" + ex.StackTrace);//для разработчика
                 Clients?.All.SendAsync("Error", "Ошибка!", "При чтении свойств объекта на сервере, произошла ошибка, для того чтобы попробовать снова, обновите страничку");//для клиента
             }
             
         }
 
-        public async Task Recieve(Dictionary<string, object> props) {//метод который принимает уже новый объект от клиента и меняет состояние того объекта который лежит и ждёт у нас в куче
+        public async Task Edit(Dictionary<string, object> props) {//метод который принимает уже новый объект от клиента и меняет состояние того объекта который лежит и ждёт у нас в куче
             try
             {
+                if (props.ContainsKey("Edited")) {
+                    props.Remove("Edited");
+                }
+
                 foreach (var prop in Parser(_obj?.GetType()))//это для отладки, чтобы видеть, что в куче есть наш объект со свойствами доступными для изменения и в них есть какое-то значение
                 {
                     _logger.LogInformation($"Значение свойства {prop.Name} = " + prop.GetValue(_obj) + " объекта " + _obj?.GetType().Name + " до изменения");//это уже по сути для отладки, чтобы увидеть, что изменения произошли
                 }
-
-
-                foreach (var item in props.Keys)//собственно говоря меняем состояние объекта!
-                { 
-                    var value = (JsonElement)props[item];//апкастим до jsonElement, потому что именно такой тип всегда приходит к нам от клиента
-                    if (value.ValueKind == JsonValueKind.Number)
-                    {
-                        _obj?.GetType().GetProperty(item).SetValue(_obj, NumberConverter(props));
-                    }
-                    else {
-                        _obj?.GetType().GetProperty(item).SetValue(_obj, value.GetString());
-                    }
-                    
+                /*Процесс десиарилизации свойств которые приходят с клиента*/
+                Dictionary<string, object> DesiarilazeDictionary = new Dictionary<string, object>();
+                foreach (var prop in props) {
+                    var jsDes = (JsonElement)prop.Value;
+                    DesiarilazeDictionary.Add(prop.Key, jsDes.GetProperty("value"));
                 }
 
-                foreach (var prop in Parser(_obj?.GetType())) {//это уже по сути для отладки, чтобы увидеть, что изменения произошли
+                PropertySetter(DesiarilazeDictionary);//собственно говоря меняем состояние объекта!
+                
+
+                foreach (var prop in Parser(_obj?.GetType()))
+                {//это уже по сути для отладки, чтобы увидеть, что изменения произошли
                     _logger.LogInformation($"Значение свойства {prop.Name} = " + prop.GetValue(_obj) + " объекта " + _obj?.GetType().Name + " после изменения");
                 }
+                
+                props.Add("Edited", new { value = true });//если нигде не возникло исключения, значит можно сигнплизировать клиенту, что объект успешно изменён
+                
 
-                props.Add("Edited", true);//если нигде не возникло исключения, значит можно сигнплизировать клиенту, что объект успешно изменён
                 await Clients?.All.SendAsync("Recieve", props);//шлём обратно клиенту изменённый объект
             }
             catch (Exception ex)
             {
-                _logger.LogError("При попытке изменения и отправки обратно клиенту объекта произошла ошибка: " + ex.Message + " stackTrace \n" + ex.StackTrace);//для разработчика
+                _logger.LogError("При попытке изменения и отправки обратно клиенту объекта произошла ошибка: " + ex.Message + "\n stackTrace: \n" + ex.StackTrace);//для разработчика
                 Clients?.All.SendAsync("Error", "Ошибка!", "При изменении свойств объекта на сервере, произошла ошибка, для того чтобы попробовать снова, обновите страничку");//для клиента
             }
         }
         public override async Task OnConnectedAsync()
         {
-            await Edit(new MyType1());
+            await InitializeObject(new MyType1());//место входа для нашего кастомного объекта, экспериментируйте!!!
             await base.OnConnectedAsync();
         }
 
     }
     class MyType1 {//собственно прототип нашего объекта, здесь может быть любой самописный тип
-        public int MyIntProperty { get; set; } = 5;
+        public int MyIntProperty { get; set; } = -5;
+        public byte MyByteProp { get; set; } = 4;
+        public sbyte MySByteProp { get; set; } = -65;
+        public uint MyUIntProperty { get; set; } = 5;
         public string MyStringProperty { get; set; } = "Hello world";
     }
 }
