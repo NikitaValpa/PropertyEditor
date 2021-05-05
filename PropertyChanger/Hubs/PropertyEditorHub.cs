@@ -31,7 +31,7 @@ namespace PropertyChanger.Hubs
             _logger = logger;
         }
 
-        private PropertyInfo[] PropertyFilter(Type type) //метод для парсинга свойств объектов
+        private PropertyInfo[] PropertyFilter(Type type) //метод для фильтрации свойств объектов
         {
             var props = new List<PropertyInfo>();
             foreach (var prop in type.GetProperties()) {
@@ -50,7 +50,7 @@ namespace PropertyChanger.Hubs
         }
         /*Так, тут потребуется много комментариев, поехали.
          * Суть в следующем, от клиента нам приходит объект с ключом и значением, ключ, это имя нашего свойства, а значение, это структура JsonElement 
-         * просто приведенная к object. Так вот, нам надо взять этот JsonElement и привести его к одному из целочисленных типов данных, которое поддерживает
+         * просто приведенная к object. Так вот, нам надо взять этот JsonElement и привести его к одному из типов данных, которое поддерживает
          * наше приложение, для этого есть словарь конвертер. В него запиханы функции, которые как раз и приводят наш jsonElement например к int32 или int16 и т.д.
          * А доступ к функциям конвертера мы получаем по ключу, который является названием типа. Сам тип к которому нам нужно привести jsonElement мы получаем
          * путем сопоставления имени свойства которое к нам пришло от клиента и имени свойства в нашем .NET объекте.
@@ -113,6 +113,7 @@ namespace PropertyChanger.Hubs
                 {
                     _logger.LogInformation($"Значение свойства {prop.Name} = " + prop.GetValue(_obj) + " объекта " + _obj?.GetType().Name + " до изменения");//это уже по сути для отладки, чтобы увидеть, что изменения произошли
                 }
+                
                 /*Процесс десиарилизации свойств которые приходят с клиента*/
                 Dictionary<string, object> DesiarilazeDictionary = new Dictionary<string, object>();
                 foreach (var prop in props) {
@@ -146,7 +147,7 @@ namespace PropertyChanger.Hubs
 
     }
     class MyType1 {//собственно прототип нашего объекта, здесь может быть любой самописный тип
-        public int MyIntProperty { get; set; } = -5;
+        public int MyIntProperty { get; set; } = 10;
         public byte MyByteProp { get; set; } = 4;
         public sbyte MySByteProp { get; set; } = -65;
         public uint MyUIntProperty { get; set; } = 5;

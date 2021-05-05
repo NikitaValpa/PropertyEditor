@@ -47,13 +47,13 @@
             
                 formElements += `<label class="col-sm-2">${Prop}</label>`;
                 formElements += `<label class="col-sm-2">${data[Prop]["valueType"]}</label>`;
-            if (typeof (data[Prop]["value"]) == "string" || "object") {//фильтруем намберы и стринги
+            if (typeof (data[Prop]["value"]) == "string" || data[Prop]["value"] == null) {//фильтруем намберы и стринги
                 formElements += `<p class="col-sm-2">`
                 formElements += `<input type="text" style="float:left;" name="${Prop}" value="${data[Prop]["value"]}">`;
                 formElements += `</p>`
             } else {
                 formElements += `<p class="col-sm-2">`
-                formElements += `<input type="number" style="float:left;" name="${Prop}" min="${data[Prop]?.["min"]}" max="${data[Prop]?.["max"]}" value="${data[Prop]["value"]}">`;
+                formElements += `<input type="number" style="float:left;" required name="${Prop}" min="${data[Prop]?.["min"]}" max="${data[Prop]?.["max"]}" value="${data[Prop]["value"]}">`;
                 formElements += `</p>`
             }
             
@@ -84,9 +84,22 @@
         $("input#sendToServer").click(() => {//вешаем на кнопку обработчик
             let rows = $("form#changerPostForm>div#PropRow");
             let propsObjects = new Object();
-            for (let i = 0; i < rows.length; i++) {
+
+            
+
+            for (let i = 0; i < rows.length; i++) {//в этом цикле конструируем наш объект для отправки на сервер
                 let propName = rows[i].children[0].innerText;
+                propsObjects[`${propName}`] = {}; 
                 let propType = rows[i].children[1].innerText;
+
+                
+                if (rows[i].children[2].children[0].min != "") {
+                    let min = Number(rows[i].children[2].children[0].min);
+                    let max = Number(rows[i].children[2].children[0].max);
+                    propsObjects[`${propName}`][`min`] = min;
+                    propsObjects[`${propName}`][`max`] = max;
+                }
+                
 
                 let value;
                 if (!isNaN(Number(rows[i].children[2].children[0].value)) && Number(rows[i].children[2].children[0].value!="")) {//фильтруем намберы и стринги, тоесть если не удаётся преобразовать в намбер, то значит это стринг
@@ -94,8 +107,7 @@
                 } else {
                     value = rows[i].children[2].children[0].value.toString();
                 }
-                /*Конструируем объект объектов для отсылки на сервер*/
-                propsObjects[`${propName}`] = {};              
+                             
                 propsObjects[`${propName}`][`value`] = value;
                 propsObjects[`${propName}`][`valueType`] = propType;
             }
