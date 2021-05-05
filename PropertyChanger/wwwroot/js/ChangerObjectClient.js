@@ -33,6 +33,12 @@
         $(document.forms.changerPostForm).html("");//чистим нашу форму перед новой отрисовкой
 
         let formElements = "";
+        let length = 0;
+
+        for (let Prop in data) {
+            length++;
+        }
+
         for (let Prop in data) {//заполняем нашу форму
             if (Prop == "Edited") {//нам не надо отрисовывать этот флаг в форме, если он есть
                 continue;
@@ -54,8 +60,12 @@
         } else {
             formElements += `<div class="row mt-4"><div class="col-auto"> <input type="button" id="sendToServer" value="Изменить объект"></div></div>`;//добавляем кнопку в самом конце
         }
+        if (length == 0) {
+            $(document.forms.changerPostForm).html(`<div class="row mt-4"><div class="col-auto"><p>Нет доступных свойств для изменения</p></div></div>`);
+        } else {
+            $(document.forms.changerPostForm).html(formElements);
+        }
         
-        $(document.forms.changerPostForm).html(formElements);
 
         $('input[type="number"]').on('change keyup', function () {//так как дурацкие браузеры позволяют писать буквы в инпутах с типом намбер, вешаем реплейсеры
             // Remove invalid characters

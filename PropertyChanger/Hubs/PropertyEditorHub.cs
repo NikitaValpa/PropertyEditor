@@ -13,7 +13,6 @@ namespace PropertyChanger.Hubs
     public class PropertyEditorHub : Hub
     {
         private readonly ILogger<PropertyEditorHub> _logger;
-        private Dictionary<string, object> propsToClient = new Dictionary<string, object>();
         private Dictionary<string, Func<JsonElement,object>> Converter = new Dictionary<string, Func<JsonElement,object>>
         {//очень удобно можно конфигурировать список поддерживаемых типов просто комментируя ненужные
             ["SByte"] = jsonElem => { return jsonElem.GetSByte(); },
@@ -32,7 +31,7 @@ namespace PropertyChanger.Hubs
             _logger = logger;
         }
 
-        private PropertyInfo[] Parser(Type type) //метод для парсинга свойств объектов
+        private PropertyInfo[] PropertyFilter(Type type) //метод для парсинга свойств объектов
         {
             var props = new List<PropertyInfo>();
             foreach (var prop in type.GetProperties()) {
@@ -59,7 +58,7 @@ namespace PropertyChanger.Hubs
          * Конец)
          */
         private bool PropertySetter(Dictionary<string, object> JSprops) {
-            var NETprops = Parser(_obj?.GetType());
+            var NETprops = PropertyFilter(_obj?.GetType());
             foreach (var JSPropName in JSprops.Keys) {
                 foreach (var NETprop in NETprops) {
                     if (NETprop.Name == JSPropName) {
@@ -79,8 +78,9 @@ namespace PropertyChanger.Hubs
                     _obj = obj;
                 }
                 
-                var ParsedProperties = Parser(_obj?.GetType());
-                foreach (var prop in ParsedProperties) {
+                var FilteredProperties = PropertyFilter(_obj?.GetType());
+                Dictionary<string, object> propsToClient = new Dictionary<string, object>();
+                foreach (var prop in FilteredProperties) {
                     propsToClient.Add(prop.Name, new { value=prop.GetValue(_obj), valueType=prop.PropertyType.Name});
                 }
 
@@ -100,7 +100,7 @@ namespace PropertyChanger.Hubs
                     props.Remove("Edited");
                 }
 
-                foreach (var prop in Parser(_obj?.GetType()))//это для отладки, чтобы видеть, что в куче есть наш объект со свойствами доступными для изменения и в них есть какое-то значение
+                foreach (var prop in PropertyFilter(_obj?.GetType()))//это для отладки, чтобы видеть, что в куче есть наш объект со свойствами доступными для изменения и в них есть какое-то значение
                 {
                     _logger.LogInformation($"Значение свойства {prop.Name} = " + prop.GetValue(_obj) + " объекта " + _obj?.GetType().Name + " до изменения");//это уже по сути для отладки, чтобы увидеть, что изменения произошли
                 }
@@ -114,7 +114,7 @@ namespace PropertyChanger.Hubs
                 PropertySetter(DesiarilazeDictionary);//собственно говоря меняем состояние объекта!
                 
 
-                foreach (var prop in Parser(_obj?.GetType()))
+                foreach (var prop in PropertyFilter(_obj?.GetType()))
                 {//это уже по сути для отладки, чтобы увидеть, что изменения произошли
                     _logger.LogInformation($"Значение свойства {prop.Name} = " + prop.GetValue(_obj) + " объекта " + _obj?.GetType().Name + " после изменения");
                 }
