@@ -82,7 +82,7 @@ namespace PropertyChanger.Hubs
                 Dictionary<string, object> propsToClient = new Dictionary<string, object>();
                 foreach (var prop in FilteredProperties) {
                     //здесь мы просто к поддерживаемым целочисленным типам добавляем их MaxValue и MinValue для валидирования на клиенте 
-                    if (Converter.Keys.Take(8).FirstOrDefault(str => str == prop.PropertyType.Name) != null)
+                    if (Converter.Keys.TakeWhile(Key =>  Key != "String").FirstOrDefault(str => str == prop.PropertyType.Name) != null)
                     {
                         var max = prop.PropertyType.GetField("MaxValue").GetValue(_obj);
                         var min = prop.PropertyType.GetField("MinValue").GetValue(_obj);
