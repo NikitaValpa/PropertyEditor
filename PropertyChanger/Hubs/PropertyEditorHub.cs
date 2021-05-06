@@ -145,7 +145,7 @@ namespace PropertyChanger.Hubs
             await base.OnConnectedAsync();
         }
     }
-    class MyType1 :  {//собственно прототип нашего объекта, здесь может быть любой самописный тип
+    class MyType1 {//собственно прототип нашего объекта, здесь может быть любой самописный тип
         public int MyIntProperty { get; set; } = 10;
         public byte MyByteProp { get; set; } = 4;
         public sbyte MySByteProp { get; set; } = -65;
