@@ -141,12 +141,11 @@ namespace PropertyChanger.Hubs
         }
         public override async Task OnConnectedAsync()
         {
-            await InitializeObject(new MyType1());//место входа для нашего кастомного объекта, экспериментируйте!!!
+            await InitializeObject(new MyType1());//место входа для нашего .net объекта, экспериментируйте!!!
             await base.OnConnectedAsync();
         }
-
     }
-    class MyType1 {//собственно прототип нашего объекта, здесь может быть любой самописный тип
+    class MyType1 :  {//собственно прототип нашего объекта, здесь может быть любой самописный тип
         public int MyIntProperty { get; set; } = 10;
         public byte MyByteProp { get; set; } = 4;
         public sbyte MySByteProp { get; set; } = -65;
